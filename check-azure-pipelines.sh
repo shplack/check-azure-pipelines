@@ -18,6 +18,11 @@ usage() {
   echo "  -h, --help                      Show this help message"
 }
 
+if [[ -f ".env" ]]; then
+  # shellcheck source=/dev/null
+  source .env
+fi
+
 # Set default values
 QUIET=false
 
