@@ -183,10 +183,10 @@ fi
 # Fetch the latest run status of the pipeline
 runs_json=$(api_call "https://dev.azure.com/$ENC_ORG/$ENC_PROJECT/_apis/pipelines/$PIPELINE_ID/runs?api-version=7.0&\$top=1")
 
-latest_run_id=$(log "$runs_json" | jq -r '.value[0].id')
-latest_run_status=$(log "$runs_json" | jq -r '.value[0].state')
-latest_run_result=$(log "$runs_json" | jq -r '.value[0].result')
-latest_run_url=$(log "$runs_json" | jq -r '.value[0]._links.web.href')
+latest_run_id=$(echo "$runs_json" | jq -r '.value[0].id')
+latest_run_status=$(echo "$runs_json" | jq -r '.value[0].state')
+latest_run_result=$(echo "$runs_json" | jq -r '.value[0].result')
+latest_run_url=$(echo "$runs_json" | jq -r '.value[0]._links.web.href')
 
 if [[ "$latest_run_id" == "null" ]]; then
   log "No runs found for pipeline ID $PIPELINE_ID."
