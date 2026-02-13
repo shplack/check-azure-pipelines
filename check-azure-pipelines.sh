@@ -108,67 +108,69 @@ select_from_list() {
   printf '%s\n' "${options[@]}" | fzf --prompt="$prompt> "
 }
 
-# Parse input arguments or prompt for them
-if [[ $# -eq 3 ]]; then
-  ORG=$1
-  PROJECT=$2
-  PIPELINE_ID=$3
-else
-  # Check env vars for ORG, PROJECT, PIPELINE_ID
+
+# Check env vars for ORG, PROJECT, PIPELINE_ID
+if [[ -z "$ORG" ]]; then
   ORG=${AZURE_DEVOPS_ORG:-}
+fi
+
+if [[ -z "$PROJECT" ]]; then
   PROJECT=${AZURE_DEVOPS_PROJECT:-}
+fi
+
+if [[ -z "$PIPELINE_ID" ]]; then
   PIPELINE_ID=${AZURE_DEVOPS_PIPELINE_ID:-}
+fi
 
-  # Prompt for org if not set
-  if [[ -z "$ORG" ]]; then
-    read -rp "Enter Azure DevOps organization name: " ORG
+# Prompt for org if not set
+if [[ -z "$ORG" ]]; then
+  read -rp "Enter Azure DevOps organization name: " ORG
+fi
+
+# URL encode org for API calls
+ENC_ORG=$(urlencode "$ORG")
+
+# List projects and select if PROJECT not set
+if [[ -z "$PROJECT" ]]; then
+  projects_json=$(api_call "https://dev.azure.com/$ENC_ORG/_apis/projects?api-version=7.0")
+  mapfile -t projects < <(echo "$projects_json" | jq -r '.value[].name')
+
+  if [[ ${#projects[@]} -eq 0 ]]; then
+    log "No projects found in organization $ORG."
+    exit 1
   fi
 
-  # URL encode org for API calls
-  ENC_ORG=$(urlencode "$ORG")
+  PROJECT=$(select_from_list "Select project" "${projects[@]}")
+fi
 
-  # List projects and select if PROJECT not set
-  if [[ -z "$PROJECT" ]]; then
-    projects_json=$(api_call "https://dev.azure.com/$ENC_ORG/_apis/projects?api-version=7.0")
-    mapfile -t projects < <(echo "$projects_json" | jq -r '.value[].name')
+# URL encode project for API calls
+ENC_PROJECT=$(urlencode "$PROJECT")
 
-    if [[ ${#projects[@]} -eq 0 ]]; then
-      log "No projects found in organization $ORG."
-      exit 1
+# List pipelines and select if PIPELINE_ID not set
+if [[ -z "$PIPELINE_ID" ]]; then
+  pipelines_json=$(api_call "https://dev.azure.com/$ENC_ORG/$ENC_PROJECT/_apis/pipelines?api-version=7.0")
+  mapfile -t pipeline_names < <(echo "$pipelines_json" | jq -r '.value[].name')
+  mapfile -t pipeline_ids < <(echo "$pipelines_json" | jq -r '.value[].id')
+
+  if [[ ${#pipeline_names[@]} -eq 0 ]]; then
+    log "No pipelines found in project $PROJECT."
+    exit 1
+  fi
+
+  selected_pipeline=$(select_from_list "Select pipeline" "${pipeline_names[@]}")
+
+  # Find pipeline id by name
+  PIPELINE_ID=""
+  for i in "${!pipeline_names[@]}"; do
+    if [[ "${pipeline_names[$i]}" == "$selected_pipeline" ]]; then
+      PIPELINE_ID=${pipeline_ids[$i]}
+      break
     fi
+  done
 
-    PROJECT=$(select_from_list "Select project" "${projects[@]}")
-  fi
-
-  # URL encode project for API calls
-  ENC_PROJECT=$(urlencode "$PROJECT")
-
-  # List pipelines and select if PIPELINE_ID not set
   if [[ -z "$PIPELINE_ID" ]]; then
-    pipelines_json=$(api_call "https://dev.azure.com/$ENC_ORG/$ENC_PROJECT/_apis/pipelines?api-version=7.0")
-    mapfile -t pipeline_names < <(echo "$pipelines_json" | jq -r '.value[].name')
-    mapfile -t pipeline_ids < <(echo "$pipelines_json" | jq -r '.value[].id')
-
-    if [[ ${#pipeline_names[@]} -eq 0 ]]; then
-      log "No pipelines found in project $PROJECT."
-      exit 1
-    fi
-
-    selected_pipeline=$(select_from_list "Select pipeline" "${pipeline_names[@]}")
-
-    # Find pipeline id by name
-    PIPELINE_ID=""
-    for i in "${!pipeline_names[@]}"; do
-      if [[ "${pipeline_names[$i]}" == "$selected_pipeline" ]]; then
-        PIPELINE_ID=${pipeline_ids[$i]}
-        break
-      fi
-    done
-
-    if [[ -z "$PIPELINE_ID" ]]; then
-      log "Failed to find pipeline ID for selected pipeline."
-      exit 1
-    fi
+    log "Failed to find pipeline ID for selected pipeline."
+    exit 1
   fi
 fi
 
