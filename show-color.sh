@@ -31,6 +31,7 @@ show_color() {
                 green)  pixel='\xe0\x07' ;;
                 red)    pixel='\x00\xf8' ;;
                 yellow) pixel='\xe0\xff' ;;
+                white)  pixel='\xff\xff' ;;
             esac
             ;;
         24)
@@ -39,6 +40,7 @@ show_color() {
                 green)  pixel='\x00\xff\x00' ;;
                 red)    pixel='\x00\x00\xff' ;;
                 yellow) pixel='\x00\xff\xff' ;;
+                white)  pixel='\xff\xff\xff' ;;
             esac
             ;;
         32)
@@ -47,6 +49,7 @@ show_color() {
                 green)  pixel='\x00\xff\x00\xff' ;;
                 red)    pixel='\x00\x00\xff\xff' ;;
                 yellow) pixel='\x00\xff\xff\xff' ;;
+                white)  pixel='\xff\xff\xff\xff' ;;
             esac
             ;;
         *)
@@ -66,11 +69,11 @@ sys.stdout.buffer.write(pixel * ${pixel_count})
 }
 
 usage() {
-    echo "Usage: $0 {green|red|yellow}"
+    echo "Usage: $0 {green|red|yellow|white}"
     exit 1
 }
 
-if [[ $# -ne 1 ]] || [[ "$1" != "green" && "$1" != "red" && "$1" != "yellow" ]]; then
+if [[ $# -ne 1 ]] || [[ "$1" != "green" && "$1" != "red" && "$1" != "yellow" && "$1" != "white" ]]; then
     usage
 fi
 
