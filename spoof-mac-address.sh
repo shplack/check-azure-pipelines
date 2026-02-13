@@ -25,6 +25,5 @@ if ping -c1 google.com &>/dev/null; then
   exit 0
 else
   echo "Failed to establish connection with spoofed MAC address."
-  ./show-color.sh red
   exit 1
 fi

@@ -13,6 +13,11 @@ if [ "$LOCAL" != "$REMOTE" ]; then
   exit 0
 fi
 
+if ! ./spoof-mac-address.sh; then
+  ./show-color.sh red
+  exit 1
+fi
+
 for id in 953 1003; do
   if ! ./check-azure-pipelines.sh -q -i "$id"; then
     ./show-color.sh red
