@@ -13,14 +13,11 @@ if [ "$LOCAL" != "$REMOTE" ]; then
   exit 0
 fi
 
-if ! ./check-azure-pipelines.sh -q -i 953; then
-  ./show-color.sh red
-  exit 1
-fi
-
-if ! ./check-azure-pipelines.sh -q -i 1003; then
-  ./show-color.sh red
-  exit 1
-fi
+for id in 953 1003; do
+  if ! ./check-azure-pipelines.sh -q -i "$id"; then
+    ./show-color.sh red
+    exit 1
+  fi
+done
 
 ./show-color.sh green
