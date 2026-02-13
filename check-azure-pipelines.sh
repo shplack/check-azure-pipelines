@@ -27,8 +27,8 @@ fi
 QUIET=false
 
 # Parse command line arguments
-for i in "$@"; do
-  case $i in
+while [[ $# -gt 0 ]]; do
+  case $1 in
     -q|--quiet)
       QUIET=true
       shift
