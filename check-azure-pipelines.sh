@@ -5,14 +5,17 @@
 # It can take optional arguments for organization, project, and pipeline ID, or it will prompt the user to select them interactively.
 
 usage() {
-  echo "Usage: $0 [ORG] [PROJECT] [PIPELINE_ID]"
-  echo "       $0 --quiet"
+  echo "Usage: $0 [options]"
   echo ""
   echo "Checks the status of the latest run of an Azure DevOps pipeline."
   echo "Requires AZURE_DEVOPS_PAT environment variable to be set."
   echo ""
   echo "Optional arguments:"
-  echo "  -q, --quiet    Suppress output, only return exit code (0 for success, 1 for failure)"
+  echo "  -o, --org <ORG>                 Azure DevOps Organization"
+  echo "  -p, --project <PROJECT>         Azure DevOps Project"
+  echo "  -i, --pipeline-id <PIPELINE_ID> Pipeline ID"
+  echo "  -q, --quiet                     Suppress output, only return exit code (0 for success, 1 for failure)"
+  echo "  -h, --help                      Show this help message"
 }
 
 # Set default values
@@ -27,9 +30,23 @@ for i in "$@"; do
       ;;
     -h|--help)
       usage
-      exit 1
+      exit 0
       ;;
-    *)      # Positional arguments will be handled later
+    -o|--org)
+      ORG="$2"
+      shift 2
+      ;;
+    -p|--project)
+      PROJECT="$2"
+      shift 2
+      ;;
+    -i|--pipeline-id)
+      PIPELINE_ID="$2"
+      shift 2
+      ;;
+    *)
+      usage
+      exit 1
       ;;
   esac
 done
