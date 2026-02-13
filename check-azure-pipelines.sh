@@ -19,8 +19,14 @@ usage() {
 }
 
 if [[ -f ".env" ]]; then
-  # shellcheck source=/dev/null
-  source .env
+  # read each line of .env and export it as an environment variable
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # skip empty lines and comments
+    if [[ -z "$line" || "$line" == \#* ]]; then
+      continue
+    fi
+    export "${line?}"
+  done < ".env"
 fi
 
 # Set default values
