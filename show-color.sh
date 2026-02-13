@@ -3,7 +3,7 @@
 # run args on host
 run() {
     # shellcheck disable=SC2029
-    ssh target "$*"
+    ssh target "$*" 1>/dev/null 2>&1
 }
 
 show_color() {
@@ -23,10 +23,6 @@ show_color() {
         return 1
     fi
 
-    local bytes_per_pixel=$(( bpp / 8 ))
-    local total_bytes=$(( width * height * bytes_per_pixel ))
-
-    # Build a single pixel value based on color and bpp
     local pixel
     case "$bpp" in
         16)
