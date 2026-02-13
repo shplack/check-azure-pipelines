@@ -1,8 +1,59 @@
 #!/usr/bin/env bash
 
+# This script checks the status of the latest run of an Azure DevOps pipeline.
+# It requires the AZURE_DEVOPS_PAT environment variable to be set with a Personal Access Token.
+# It can take optional arguments for organization, project, and pipeline ID, or it will prompt the user to select them interactively.
+
+usage() {
+  echo "Usage: $0 [ORG] [PROJECT] [PIPELINE_ID]"
+  echo "       $0 --quiet"
+  echo ""
+  echo "Checks the status of the latest run of an Azure DevOps pipeline."
+  echo "Requires AZURE_DEVOPS_PAT environment variable to be set."
+  echo ""
+  echo "Optional arguments:"
+  echo "  -q, --quiet    Suppress output, only return exit code (0 for success, 1 for failure)"
+}
+
+# Set default values
+QUIET=false
+
+# Parse command line arguments
+for i in "$@"; do
+  case $i in
+    -q|--quiet)
+      QUIET=true
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 1
+      ;;
+    *)      # Positional arguments will be handled later
+      ;;
+  esac
+done
+
+# Function to log messages only if not in quiet mode
+log() {
+  if [[ "$QUIET" = false ]]; then
+    echo "$@"
+  fi
+}
+
 # Check if AZURE_DEVOPS_PAT is set
 if [[ -z "$AZURE_DEVOPS_PAT" ]]; then
-  echo "Error: Environment variable AZURE_DEVOPS_PAT is not set."
+  log "Error: Environment variable AZURE_DEVOPS_PAT is not set."
+  exit 1
+fi
+
+if ! command -v fzf &> /dev/null; then
+  log "Error: fzf is not installed. Please install fzf to use this script."
+  exit 1
+fi
+
+if ! command -v jq &> /dev/null; then
+  log "Error: jq is not installed. Please install jq to use this script."
   exit 1
 fi
 
@@ -31,22 +82,8 @@ select_from_list() {
   shift
   local options=("$@")
 
-  if command -v fzf > /dev/null; then
-    # Use fzf for selection with prompt
-    printf '%s\n' "${options[@]}" | fzf --prompt="$prompt> "
-  else
-    # Fallback to select menu
-    echo "fzf not found, falling back to select menu."
-    PS3="$prompt> "
-    select opt in "${options[@]}"; do
-      if [[ -n $opt ]]; then
-        echo "$opt"
-        break
-      else
-        echo "Invalid selection."
-      fi
-    done
-  fi
+  # Use fzf for selection with prompt
+  printf '%s\n' "${options[@]}" | fzf --prompt="$prompt> "
 }
 
 # Parse input arguments or prompt for them
@@ -74,7 +111,7 @@ else
     mapfile -t projects < <(echo "$projects_json" | jq -r '.value[].name')
 
     if [[ ${#projects[@]} -eq 0 ]]; then
-      echo "No projects found in organization $ORG."
+      log "No projects found in organization $ORG."
       exit 1
     fi
 
@@ -91,7 +128,7 @@ else
     mapfile -t pipeline_ids < <(echo "$pipelines_json" | jq -r '.value[].id')
 
     if [[ ${#pipeline_names[@]} -eq 0 ]]; then
-      echo "No pipelines found in project $PROJECT."
+      log "No pipelines found in project $PROJECT."
       exit 1
     fi
 
@@ -107,29 +144,33 @@ else
     done
 
     if [[ -z "$PIPELINE_ID" ]]; then
-      echo "Failed to find pipeline ID for selected pipeline."
+      log "Failed to find pipeline ID for selected pipeline."
       exit 1
     fi
   fi
 fi
 
-# URL encode pipeline id is numeric, so no need
-
 # Fetch the latest run status of the pipeline
 runs_json=$(api_call "https://dev.azure.com/$ENC_ORG/$ENC_PROJECT/_apis/pipelines/$PIPELINE_ID/runs?api-version=7.0&\$top=1")
 
-latest_run_id=$(echo "$runs_json" | jq -r '.value[0].id')
-latest_run_status=$(echo "$runs_json" | jq -r '.value[0].state')
-latest_run_result=$(echo "$runs_json" | jq -r '.value[0].result')
-latest_run_url=$(echo "$runs_json" | jq -r '.value[0]._links.web.href')
+latest_run_id=$(log "$runs_json" | jq -r '.value[0].id')
+latest_run_status=$(log "$runs_json" | jq -r '.value[0].state')
+latest_run_result=$(log "$runs_json" | jq -r '.value[0].result')
+latest_run_url=$(log "$runs_json" | jq -r '.value[0]._links.web.href')
 
 if [[ "$latest_run_id" == "null" ]]; then
-  echo "No runs found for pipeline ID $PIPELINE_ID."
+  log "No runs found for pipeline ID $PIPELINE_ID."
   exit 1
 fi
 
-echo "Pipeline: $PIPELINE_ID"
-echo "Latest run ID: $latest_run_id"
-echo "Status: $latest_run_status"
-echo "Result: $latest_run_result"
-echo "URL: $latest_run_url"
+log "Pipeline: $PIPELINE_ID"
+log "Latest run ID: $latest_run_id"
+log "Status: $latest_run_status"
+log "Result: $latest_run_result"
+log "URL: $latest_run_url"
+
+if grep -q "succeeded" <<< "$latest_run_result"; then
+  exit 0
+else
+  exit 1
+fi
